@@ -124,24 +124,47 @@ namespace FTH.Extension
                 return obj;
             }
         }
-        public static TResult ConvertObject<TRequest, TResult>(this TRequest objRequest)
-            where TResult : new()
+        public static TResult ConvertObject<TRequest, TResult>(this TRequest objRequest)    where TResult : new() where TRequest: new ()
         {
-            var result = new TResult();
-            PropertyInfo[] resultPropertyInfos = typeof(TResult).GetProperties();
-            foreach (PropertyInfo propertyInfo in objRequest.GetType().GetProperties())
+            return ConvertObject<TRequest, TResult>(objRequest, false);
+        }
+        public static TResult ConvertObject<TRequest, TResult>(this TRequest objRequest, bool skipTrows) where TResult : new() where TRequest : new()
+        {
+            return Map<TResult>(objRequest, default, skipTrows);
+
+        }
+
+        public static T Map<T>(this object data, T target) where T : new()
+        {
+            return Map(data, target, false);
+        }
+
+        public static T Map<T>(this object data, T target, bool skipThrows) where T : new()
+        {
+            if (data == null) return target;
+
+            if (target == null) target = Activator.CreateInstance<T>();
+
+            var properties = data.GetType().GetProperties();
+
+            var targetType = typeof(T);
+            foreach (var item in properties)
             {
-                if (resultPropertyInfos.Any(x => x.Name == propertyInfo.Name))
+                var prop = targetType.GetProperty(item.Name, item.PropertyType);
+
+                if (prop != null)
                 {
-                    PropertyInfo rInfo = resultPropertyInfos.First(x => x.Name == propertyInfo.Name);
-                    if (propertyInfo.PropertyType == rInfo.PropertyType)
+                    try
                     {
-                        rInfo.SetValue(result, propertyInfo.GetValue(objRequest, null), null);
+                        prop.SetValue(target, item.GetValue(data, null), null);
+                    }
+                    catch
+                    {
+                        if (skipThrows == false) throw;
                     }
                 }
             }
-            return result;
-
+            return target;
         }
     }
 }
